@@ -5,5 +5,13 @@
     "creator": "Yosh",
     "code": "const got = require('got')\nconst cheerio = require('cheerio')\nconst fs = require('fs')\n\nconst PATH = './jadwal-sholat.json'\n\nasync function getCitySelectOption() {\n    const html = await got('https://jadwalsholat.org/jadwal-sholat/monthly.php').text()\n    const $ = cheerio.load(html)\n\n    return $('.inputcity > option').map(function () {\n        const $option = $(this)\n        let kota = $option.text().trim().toLowerCase()\n        if (kota.includes(',')) [kota, _] = kota.split(',')\n\n        return {\n            kota,\n            value: $option.attr('value').trim()\n        }\n    }).toArray()\n}\n\nfunction writeData(data) {\n    const json = JSON.stringify(\n        data.sort((a, b) => a.value - b.value),\n        null, 4)\n    return fs.promises.writeFile(PATH, json)\n}\n\ngetCitySelectOption().then(writeData)",
     "creatorUrl": "https://github.com/BochilTeam/scraper/blob/master/data/jadwal-sholat.js"
+  },
+  {
+    "title": "Scraper Test2",
+    "description": "Digunakan untuk menggunakan",
+    "creator": "Yosh",
+    "code": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/vite.svg\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>SCode</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>\n  </body>\n</html>\n",
+    "creatorUrl": "https://github.com/dashboard",
+    "id": "0c357579-c64c-4641-a4b0-f6ba707ac1a3"
   }
 ]
