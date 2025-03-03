@@ -47,6 +47,58 @@ npm run lint
 ### ⚙️ Pengaturan Installasi
 📌 **Masuk ke file `.env`** untuk meletakkan token GitHub API.
 
+📌 **Mengganti Hero Section Background**:
+Setelah membuat repository, pergi ke folder `src/pages/home.tsx` lalu edit bagian berikut, menjadi code yang ini:
+```ts
+{/* Hero Section */}
+      <section 
+        className="relative py-16 sm:py-24"
+        style={{
+          backgroundImage: `url('https://example.com/your-background-image.jpg')`, // Ganti dengan URL gambar Anda
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-4xl sm:text-5xl font-bold mb-6">
+              Discover Powerful Web Scrapers & WhatsApp Bots
+            </h1>
+            <p className="text-xl text-gray-200 mb-8">
+              Find the perfect tools to automate your tasks and enhance your workflow
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setActiveTab('scrapers')}
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
+                  activeTab === 'scrapers'
+                    ? 'bg-white text-[#5865F2] shadow-lg'
+                    : 'bg-[#4752C4]/50 text-white hover:bg-[#4752C4]'
+                }`}
+              >
+                <Code2 size={20} />
+                Web Scrapers
+              </button>
+              <button
+                onClick={() => setActiveTab('wabots')}
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
+                  activeTab === 'wabots'
+                    ? 'bg-white text-[#5865F2] shadow-lg'
+                    : 'bg-[#4752C4]/50 text-white hover:bg-[#4752C4]'
+                }`}
+              >
+                <Bot size={20} />
+                WhatsApp Bots
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+```
+
+
+
 📌 **Konfigurasi GitHub**:
 Setelah membuat repository, pergi ke folder `src/utils/github.ts` lalu edit bagian berikut:
 ```ts
