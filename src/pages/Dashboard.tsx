@@ -1,19 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ArrowLeft, Code2, Bot, Save, AlertCircle } from 'lucide-react';
+import { LogOut, ArrowLeft, Code2, Bot, Save, AlertCircle, Trash2, Edit, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ScraperData, WaBotData } from '../types';
 import { useScrapers } from '../hooks/useScrapers';
 import { useWaBots } from '../hooks/useWaBots';
 
 type FormType = 'scraper' | 'wabot';
+type Mode = 'add' | 'edit';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { scrapers, addScraper } = useScrapers();
-  const { waBots, addWaBot } = useWaBots();
+  const { scrapers, addScraper, removeScraper, editScraper } = useScrapers();
+  const { waBots, addWaBot, removeWaBot, editWaBot } = useWaBots();
   const [activeForm, setActiveForm] = useState<FormType>('scraper');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mode, setMode] = useState<Mode>('add');
+  const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | undefined>(undefined);
   
   const [scraperFormData, setScraperFormData] = useState<ScraperData>({
     title: '',
@@ -32,26 +37,62 @@ export const Dashboard: React.FC = () => {
     buttonUrl: '',
   });
 
+  const resetScraperForm = () => {
+    setScraperFormData({
+      title: '',
+      description: '',
+      creator: '',
+      code: '',
+      creatorUrl: '',
+    });
+    setMode('add');
+    setSelectedItemId(undefined);
+  };
+
+  const resetWaBotForm = () => {
+    setWaBotFormData({
+      name: '',
+      description: '',
+      creator: '',
+      imageUrl: '',
+      buttonType: 'download',
+      buttonUrl: '',
+    });
+    setMode('add');
+    setSelectedItemId(undefined);
+  };
+
   const handleScraperSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      const success = await addScraper(scraperFormData);
+      let success = false;
       
-      if (success) {
-        toast.success('Scraper added successfully!');
-        setScraperFormData({
-          title: '',
-          description: '',
-          creator: '',
-          code: '',
-          creatorUrl: '',
-        });
+      if (mode === 'add') {
+        success = await addScraper(scraperFormData);
+        if (success) {
+          toast.success('Scraper added successfully!');
+          resetScraperForm();
+        } else {
+          toast.error('Failed to add scraper');
+        }
       } else {
-        toast.error('Failed to add scraper');
+        // Edit mode
+        if (selectedItemId) {
+          const updatedScraper = { ...scraperFormData, id: selectedItemId };
+          console.log('Updating scraper with data:', updatedScraper);
+          success = await editScraper(updatedScraper);
+          if (success) {
+            toast.success('Scraper updated successfully!');
+            resetScraperForm();
+          } else {
+            toast.error('Failed to update scraper');
+          }
+        }
       }
     } catch (error) {
+      console.error('Error in handleScraperSubmit:', error);
       toast.error('An error occurred');
     } finally {
       setIsSubmitting(false);
@@ -63,25 +104,110 @@ export const Dashboard: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await addWaBot(waBotFormData);
+      let success = false;
       
-      if (success) {
-        toast.success('WhatsApp Bot added successfully!');
-        setWaBotFormData({
-          name: '',
-          description: '',
-          creator: '',
-          imageUrl: '',
-          buttonType: 'download',
-          buttonUrl: '',
-        });
+      if (mode === 'add') {
+        success = await addWaBot(waBotFormData);
+        if (success) {
+          toast.success('WhatsApp Bot added successfully!');
+          resetWaBotForm();
+        } else {
+          toast.error('Failed to add WhatsApp Bot');
+        }
       } else {
-        toast.error('Failed to add WhatsApp Bot');
+        // Edit mode
+        if (selectedItemId) {
+          const updatedBot = { ...waBotFormData, id: selectedItemId };
+          console.log('Updating WA bot with data:', updatedBot);
+          success = await editWaBot(updatedBot);
+          if (success) {
+            toast.success('WhatsApp Bot updated successfully!');
+            resetWaBotForm();
+          } else {
+            toast.error('Failed to update WhatsApp Bot');
+          }
+        }
       }
     } catch (error) {
+      console.error('Error in handleWaBotSubmit:', error);
       toast.error('An error occurred');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditScraper = (scraper: ScraperData) => {
+    setScraperFormData({
+      title: scraper.title,
+      description: scraper.description,
+      creator: scraper.creator,
+      code: scraper.code,
+      creatorUrl: scraper.creatorUrl,
+    });
+    setSelectedItemId(scraper.id);
+    setMode('edit');
+    setActiveForm('scraper');
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleEditWaBot = (bot: WaBotData) => {
+    setWaBotFormData({
+      name: bot.name,
+      description: bot.description,
+      creator: bot.creator,
+      imageUrl: bot.imageUrl,
+      buttonType: bot.buttonType,
+      buttonUrl: bot.buttonUrl,
+    });
+    setSelectedItemId(bot.id);
+    setMode('edit');
+    setActiveForm('wabot');
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteConfirm = (id: string, type: FormType) => {
+    setItemToDelete(id);
+    setActiveForm(type);
+    setShowConfirmDelete(true);
+  };
+
+  const executeDelete = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      let success = false;
+      
+      if (activeForm === 'scraper') {
+        success = await removeScraper(itemToDelete);
+        if (success) {
+          toast.success('Scraper deleted successfully!');
+          // If we're editing this item, reset the form
+          if (selectedItemId === itemToDelete) {
+            resetScraperForm();
+          }
+        } else {
+          toast.error('Failed to delete scraper');
+        }
+      } else {
+        success = await removeWaBot(itemToDelete);
+        if (success) {
+          toast.success('WhatsApp Bot deleted successfully!');
+          // If we're editing this item, reset the form
+          if (selectedItemId === itemToDelete) {
+            resetWaBotForm();
+          }
+        } else {
+          toast.error('Failed to delete WhatsApp Bot');
+        }
+      }
+    } catch (error) {
+      console.error('Error in executeDelete:', error);
+      toast.error('An error occurred');
+    } finally {
+      setShowConfirmDelete(false);
+      setItemToDelete(undefined);
     }
   };
 
@@ -135,7 +261,10 @@ export const Dashboard: React.FC = () => {
           {/* Form Type Selector */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <button
-              onClick={() => setActiveForm('scraper')}
+              onClick={() => {
+                setActiveForm('scraper');
+                if (mode === 'edit') resetScraperForm();
+              }}
               className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all duration-300 ${
                 activeForm === 'scraper'
                   ? 'bg-[#5865F2] text-white shadow-lg'
@@ -143,11 +272,16 @@ export const Dashboard: React.FC = () => {
               }`}
             >
               <Code2 size={20} />
-              <span className="hidden sm:inline">Add Scraper</span>
+              <span className="hidden sm:inline">
+                {mode === 'edit' && activeForm === 'scraper' ? 'Edit Scraper' : 'Add Scraper'}
+              </span>
               <span className="sm:hidden">Scraper</span>
             </button>
             <button
-              onClick={() => setActiveForm('wabot')}
+              onClick={() => {
+                setActiveForm('wabot');
+                if (mode === 'edit') resetWaBotForm();
+              }}
               className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all duration-300 ${
                 activeForm === 'wabot'
                   ? 'bg-[#5865F2] text-white shadow-lg'
@@ -155,18 +289,39 @@ export const Dashboard: React.FC = () => {
               }`}
             >
               <Bot size={20} />
-              <span className="hidden sm:inline">Add WA Bot</span>
+              <span className="hidden sm:inline">
+                {mode === 'edit' && activeForm === 'wabot' ? 'Edit WA Bot' : 'Add WA Bot'}
+              </span>
               <span className="sm:hidden">WA Bot</span>
             </button>
           </div>
 
           {/* Form Section */}
-          <div className="bg-[#2F3136] p-6 sm:p-8 rounded-xl border border-gray-700 shadow-xl">
-            <div className="flex items-center gap-2 mb-6">
-              {activeForm === 'scraper' ? <Code2 size={24} /> : <Bot size={24} />}
-              <h2 className="text-xl sm:text-2xl font-bold text-white">
-                {activeForm === 'scraper' ? 'Add New Scraper' : 'Add New WhatsApp Bot'}
-              </h2>
+          <div className="bg-[#2F3136] p-6 sm:p-8 rounded-xl border border-gray-700 shadow-xl mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                {activeForm === 'scraper' ? <Code2 size={24} /> : <Bot size={24} />}
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  {mode === 'add' 
+                    ? (activeForm === 'scraper' ? 'Add New Scraper' : 'Add New WhatsApp Bot')
+                    : (activeForm === 'scraper' ? 'Edit Scraper' : 'Edit WhatsApp Bot')
+                  }
+                </h2>
+              </div>
+              {mode === 'edit' && (
+                <button
+                  onClick={() => {
+                    if (activeForm === 'scraper') {
+                      resetScraperForm();
+                    } else {
+                      resetWaBotForm();
+                    }
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              )}
             </div>
 
             {activeForm === 'scraper' ? (
@@ -233,12 +388,12 @@ export const Dashboard: React.FC = () => {
                   {isSubmitting ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Adding Scraper...</span>
+                      <span>{mode === 'add' ? 'Adding Scraper...' : 'Updating Scraper...'}</span>
                     </>
                   ) : (
                     <>
                       <Save size={20} />
-                      <span>Add Scraper</span>
+                      <span>{mode === 'add' ? 'Add Scraper' : 'Update Scraper'}</span>
                     </>
                   )}
                 </button>
@@ -288,7 +443,7 @@ export const Dashboard: React.FC = () => {
                       className="w-full bg-[#40444B] text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5865F2] border border-gray-700"
                       required
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                       <AlertCircle size={20} />
                     </div>
                   </div>
@@ -307,7 +462,7 @@ export const Dashboard: React.FC = () => {
                         type="radio"
                         value="download"
                         checked={waBotFormData.buttonType === 'download'}
-                        onChange={(e) => setWaBotFormData({ ...waBotFormData, buttonType: 'download' })}
+                        onChange={() => setWaBotFormData({ ...waBotFormData, buttonType: 'download' })}
                         className="sr-only"
                       />
                       <span className="text-white font-medium">Download</span>
@@ -321,7 +476,7 @@ export const Dashboard: React.FC = () => {
                         type="radio"
                         value="buy"
                         checked={waBotFormData.buttonType === 'buy'}
-                        onChange={(e) => setWaBotFormData({ ...waBotFormData, buttonType: 'buy' })}
+                        onChange={() => setWaBotFormData({ ...waBotFormData, buttonType: 'buy' })}
                         className="sr-only"
                       />
                       <span className="text-white font-medium">Buy</span>
@@ -348,20 +503,143 @@ export const Dashboard: React.FC = () => {
                   {isSubmitting ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Adding WhatsApp Bot...</span>
+                      <span>{mode === 'add' ? 'Adding WhatsApp Bot...' : 'Updating WhatsApp Bot...'}</span>
                     </>
                   ) : (
                     <>
                       <Save size={20} />
-                      <span>Add WhatsApp Bot</span>
+                      <span>{mode === 'add' ? 'Add WhatsApp Bot' : 'Update WhatsApp Bot'}</span>
                     </>
                   )}
                 </button>
               </form>
             )}
           </div>
+
+          {/* Items List Section */}
+          <div className="bg-[#2F3136] p-6 sm:p-8 rounded-xl border border-gray-700 shadow-xl">
+            <div className="flex items-center gap-2 mb-6">
+              {activeForm === 'scraper' ? <Code2 size={24} /> : <Bot size={24} />}
+              <h2 className="text-xl sm:text-2xl font-bold text-white">
+                {activeForm === 'scraper' ? 'Manage Scrapers' : 'Manage WhatsApp Bots'}
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {activeForm === 'scraper' ? (
+                scrapers.length > 0 ? (
+                  scrapers.map((scraper) => (
+                    <div 
+                      key={scraper.id || `scraper-${Math.random().toString(36).substr(2, 9)}`} 
+                      className="bg-[#36393F] p-4 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-white font-semibold text-lg">{scraper.title}</h3>
+                          <p className="text-gray-400 text-sm">By {scraper.creator}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditScraper(scraper)}
+                            className="p-2 bg-[#5865F2] text-white rounded-lg hover:bg-[#4752C4] transition-colors"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteConfirm(scraper.id!, 'scraper')}
+                            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 mt-2 line-clamp-2">{scraper.description}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>No scrapers found. Add your first scraper above.</p>
+                  </div>
+                )
+              ) : (
+                waBots.length > 0 ? (
+                  waBots.map((bot) => (
+                    <div 
+                      key={bot.id || `bot-${Math.random().toString(36).substr(2, 9)}`} 
+                      className="bg-[#36393F] p-4 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex gap-3">
+                          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                            <img 
+                              src={bot.imageUrl} 
+                              alt={bot.name} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/100?text=Error';
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-semibold text-lg">{bot.name}</h3>
+                            <p className="text-gray-400 text-sm">By {bot.creator}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditWaBot(bot)}
+                            className="p-2 bg-[#5865F2] text-white rounded-lg hover:bg-[#4752C4] transition-colors"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteConfirm(bot.id!, 'wabot')}
+                            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 mt-2 line-clamp-2">{bot.description}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>No WhatsApp bots found. Add your first bot above.</p>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showConfirmDelete && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#2F3136] p-6 rounded-xl border border-gray-700 shadow-xl max-w-md w-full">
+            <h3 className="text-xl font-bold text-white mb-4">Confirm Delete</h3>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete this {activeForm === 'scraper' ? 'scraper' : 'WhatsApp bot'}? This action cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowConfirmDelete(false)}
+                className="flex-1 bg-[#40444B] text-white py-3 rounded-xl font-semibold hover:bg-[#36393F] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                className="flex-1 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

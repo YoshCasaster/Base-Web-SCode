@@ -26,3 +26,12 @@ export interface GitHubFileResponse {
   content: string;
   sha: string;
 }
+
+export interface CreatorStats {
+  name: string;
+  avatarUrl: string;
+  scrapers: number;
+  waBots: number;
+  totalContributions: number;
+  rank: number;
+}
